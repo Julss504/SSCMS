@@ -27,7 +27,14 @@ const [selectedEvent, setSelectedEvent] = useState(null);
       const response = await eventsAPI.getAll();
       setEvents(response.data);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      // Handle session expired error
+      if (error.message === 'Session expired. Please log in again.') {
+        // The auth data has been cleared by apiRequest, 
+        // ProtectedRoute will redirect to login on next render
+        console.warn('Session expired, redirecting to login');
+      } else {
+        console.error('Error fetching events:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -276,35 +283,35 @@ const handleEventClick = (event) => {
                   );
                 })}
          </div>
-       </div>
-       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowEventModal(false)}>
-         {showEventModal && (
-           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8" onClick={(e) => e.stopPropagation()}>
-             <h3 className="text-xl font-bold text-gray-900 mb-4">Event Details</h3>
-             <div className="space-y-2 text-sm">
-               <p><strong>Title:</strong> {modalEvent?.title}</p>
-               <p><strong>Description:</strong> {modalEvent?.description}</p>
-               <p><strong>Time:</strong> {modalEvent?.time}</p>
-               <p><strong>Location:</strong> {modalEvent?.location}</p>
-               <p><strong>Department:</strong> {modalEvent?.department === 'all' ? 'All Departments' : modalEvent?.department}</p>
-               <p><strong>Registered:</strong> {modalEvent?.registeredStudents?.length || 0}</p>
-               <p><strong>Status:</strong> {modalEvent?.status}</p>
-             </div>
-             <div className="mt-6 flex justify-end">
-               <button
-                 onClick={() => {
-                   setShowEventModal(false);
-                   setModalEvent(null);
-                 }}
-                 className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-               >
-                 Close
-               </button>
-             </div>
-           </div>
-         )}
-       </div>
-     </div>
+</div>
+        {showEventModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowEventModal(false)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Event Details</h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Title:</strong> {modalEvent?.title}</p>
+                <p><strong>Description:</strong> {modalEvent?.description}</p>
+                <p><strong>Time:</strong> {modalEvent?.time}</p>
+                <p><strong>Location:</strong> {modalEvent?.location}</p>
+                <p><strong>Department:</strong> {modalEvent?.department === 'all' ? 'All Departments' : modalEvent?.department}</p>
+                <p><strong>Registered:</strong> {modalEvent?.registeredStudents?.length || 0}</p>
+                <p><strong>Status:</strong> {modalEvent?.status}</p>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowEventModal(false);
+                    setModalEvent(null);
+                  }}
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
           {/* Events Sidebar */}
           <div className="lg:col-span-1">

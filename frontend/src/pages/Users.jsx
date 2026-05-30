@@ -18,28 +18,42 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      const response = await authAPI.getUsers();
-      setUsers(response.data);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
+   const fetchUsers = async () => {
+     try {
+       const response = await authAPI.getUsers();
+       setUsers(response.data);
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         setError(err.message || 'Failed to fetch users');
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await authAPI.deleteUser(userId);
-        // Update state directly by removing the deleted user
-        setUsers(users.filter(user => user._id !== userId));
-      } catch (err) {
-        setError(err.message || 'Failed to delete user');
-      }
-    }
-  };
+   const handleDeleteUser = async (userId) => {
+     if (window.confirm('Are you sure you want to delete this user?')) {
+       try {
+         await authAPI.deleteUser(userId);
+         // Update state directly by removing the deleted user
+         setUsers(users.filter(user => user._id !== userId));
+       } catch (err) {
+         // Handle session expired error
+         if (err.message === 'Session expired. Please log in again.') {
+           // The auth data has been cleared by apiRequest, 
+           // ProtectedRoute will redirect to login on next render
+           console.warn('Session expired, redirecting to login');
+         } else {
+           setError(err.message || 'Failed to delete user');
+         }
+       }
+     }
+   };
 
   const handleLogout = () => {
     removeToken();

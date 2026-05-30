@@ -30,26 +30,40 @@ const Attendance = () => {
     fetchEvents();
   }, []);
 
-  const fetchEvents = async () => {
-    try {
-      const response = await eventsAPI.getAll();
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+   const fetchEvents = async () => {
+     try {
+       const response = await eventsAPI.getAll();
+       setEvents(response.data);
+     } catch (error) {
+       // Handle session expired error
+       if (error.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         console.error('Error fetching events:', error);
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
-  const fetchAttendance = async (eventId) => {
-    try {
-      const response = await attendanceAPI.getByEvent(eventId);
-      setAttendanceData(response.data);
-      setCurrentPage(1);
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
-    }
-  };
+   const fetchAttendance = async (eventId) => {
+     try {
+       const response = await attendanceAPI.getByEvent(eventId);
+       setAttendanceData(response.data);
+       setCurrentPage(1);
+     } catch (error) {
+       // Handle session expired error
+       if (error.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         console.error('Error fetching attendance:', error);
+       }
+     }
+   };
 
   const handleLogout = () => {
     removeToken();
@@ -62,20 +76,27 @@ const Attendance = () => {
     fetchAttendance(event._id);
   };
 
-  const handleAttendanceUpdate = async (studentId, present) => {
-    try {
-      await attendanceAPI.updateByEvent(selectedEvent._id, studentId, { present });
-      setAttendanceData(prevData => 
-        prevData.map(record => 
-          record.student._id === studentId 
-            ? { ...record, present } 
-            : record
-        )
-      );
-    } catch (error) {
-      console.error('Error updating attendance:', error);
-    }
-  };
+   const handleAttendanceUpdate = async (studentId, present) => {
+     try {
+       await attendanceAPI.updateByEvent(selectedEvent._id, studentId, { present });
+       setAttendanceData(prevData => 
+         prevData.map(record => 
+           record.student._id === studentId 
+             ? { ...record, present } 
+             : record
+         )
+       );
+     } catch (error) {
+       // Handle session expired error
+       if (error.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         console.error('Error updating attendance:', error);
+       }
+     }
+   };
 
   const filteredStudents = attendanceData.filter(record => {
     const searchLower = searchTerm.toLowerCase();

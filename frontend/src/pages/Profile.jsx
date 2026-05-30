@@ -45,35 +45,42 @@ const Profile = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+   const handleSubmit = async (e) => {
+     e.preventDefault();
+     setError('');
+     setSuccess('');
 
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+     if (formData.password && formData.password !== formData.confirmPassword) {
+       setError('Passwords do not match');
+       return;
+     }
 
-    try {
-      const updateData = {
-        name: formData.name,
-        email: formData.email,
-      };
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
+     try {
+       const updateData = {
+         name: formData.name,
+         email: formData.email,
+       };
+       if (formData.password) {
+         updateData.password = formData.password;
+       }
 
-      const response = await authAPI.updateProfile(updateData);
-      setSuccess('Profile updated successfully');
-      setEditing(false);
-      
-      // Update user data in localStorage
-      setUserData(response.data);
-    } catch (err) {
-      setError(err.message || 'Failed to update profile');
-    }
-  };
+       const response = await authAPI.updateProfile(updateData);
+       setSuccess('Profile updated successfully');
+       setEditing(false);
+       
+       // Update user data in localStorage
+       setUserData(response.data);
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         setError(err.message || 'Failed to update profile');
+       }
+     }
+   };
 
   if (loading) {
     return (

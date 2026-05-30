@@ -33,16 +33,23 @@ const Students = () => {
     fetchStudents();
   }, []);
 
-  const fetchStudents = async () => {
-    try {
-      const response = await studentsAPI.getAll();
-      setStudents(response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+   const fetchStudents = async () => {
+     try {
+       const response = await studentsAPI.getAll();
+       setStudents(response.data);
+     } catch (error) {
+       // Handle session expired error
+       if (error.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         console.error('Error fetching students:', error);
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
   const handleLogout = () => {
     removeToken();
@@ -57,32 +64,39 @@ const Students = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+   const handleSubmit = async (e) => {
+     e.preventDefault();
+     setError('');
 
-    try {
-      if (editingStudent) {
-        await studentsAPI.update(editingStudent._id, formData);
-      } else {
-        await studentsAPI.create(formData);
-      }
-      setShowModal(false);
-      setEditingStudent(null);
-      setFormData({
-        studentId: '',
-        name: '',
-        email: '',
-        phone: '',
-        department: '',
-        year: '',
-        section: '',
-      });
-      fetchStudents();
-    } catch (err) {
-      setError(err.message || 'Operation failed');
-    }
-  };
+     try {
+       if (editingStudent) {
+         await studentsAPI.update(editingStudent._id, formData);
+       } else {
+         await studentsAPI.create(formData);
+       }
+       setShowModal(false);
+       setEditingStudent(null);
+       setFormData({
+         studentId: '',
+         name: '',
+         email: '',
+         phone: '',
+         department: '',
+         year: '',
+         section: '',
+       });
+       fetchStudents();
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         setError(err.message || 'Operation failed');
+       }
+     }
+   };
 
   const handleEdit = (student) => {
     setEditingStudent(student);
@@ -98,36 +112,50 @@ const Students = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      try {
-        await studentsAPI.delete(id);
-        setStudents(students.filter(student => student._id !== id));
-      } catch (error) {
-        alert('Error deleting student: ' + error.message);
-      }
-    }
-  };
+   const handleDelete = async (id) => {
+     if (window.confirm('Are you sure you want to delete this student?')) {
+       try {
+         await studentsAPI.delete(id);
+         setStudents(students.filter(student => student._id !== id));
+       } catch (error) {
+         // Handle session expired error
+         if (error.message === 'Session expired. Please log in again.') {
+           // The auth data has been cleared by apiRequest, 
+           // ProtectedRoute will redirect to login on next render
+           console.warn('Session expired, redirecting to login');
+         } else {
+           alert('Error deleting student: ' + error.message);
+         }
+       }
+     }
+   };
 
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+   const handleImport = async (e) => {
+     const file = e.target.files[0];
+     if (!file) return;
 
-    try {
-      setLoading(true);
-      const response = await studentsAPI.import(file);
-      
-      alert(`Successfully imported ${response.data.imported} students. ${response.data.errors} errors found.`);
-      
-      fetchStudents();
-      
-      e.target.value = '';
-    } catch (err) {
-      alert(err.message || 'Error importing students');
-    } finally {
-      setLoading(false);
-    }
-  };
+     try {
+       setLoading(true);
+       const response = await studentsAPI.import(file);
+       
+       alert(`Successfully imported ${response.data.imported} students. ${response.data.errors} errors found.`);
+       
+       fetchStudents();
+       
+       e.target.value = '';
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         alert(err.message || 'Error importing students');
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
   const openAddModal = () => {
     setEditingStudent(null);

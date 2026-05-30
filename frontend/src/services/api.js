@@ -2,12 +2,17 @@
 
 // Get token from localStorage
 export const getToken = () => {
-  return localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  return token ? token.trim() : null;
 };
 
 // Set token in localStorage
 export const setToken = (token) => {
-  localStorage.setItem('token', token);
+  if (token && typeof token === 'string') {
+    localStorage.setItem('token', token.trim());
+  } else if (token !== null && token !== undefined) {
+    localStorage.setItem('token', String(token).trim());
+  }
 };
 
 // Remove token from localStorage
@@ -58,22 +63,29 @@ const apiRequest = async (endpoint, options = {}) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      console.log('Fetching URL:', `${API_URL}${endpoint}`);
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      if (!response.ok) {
+        // Handle 401 Unauthorized - clear auth data and throw specific error
+        if (response.status === 401) {
+          removeToken();
+          removeUserData();
+          throw new Error('Session expired. Please log in again.');
+        }
+        throw new Error(data.message || 'Something went wrong');
+      }
+
+      return data;
+    } catch (error) {
+      throw error;
     }
-
-    return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 // Auth API

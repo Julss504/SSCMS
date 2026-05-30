@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CORS</title>
+</head>
+<body>
+    <h1>Testing CORS to backend</h1>
+    <div id="result">Loading...</div>
+    <script>
+        fetch('http://localhost:5000/api/events')
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                console.log('Data:', data);
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = '<p style="color:red;">Error: ' + error.message + '</p>';
+                console.error('Error:', error);
+            });
+    </script>
+</body>
+</html>

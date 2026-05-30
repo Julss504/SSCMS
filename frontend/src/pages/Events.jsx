@@ -36,20 +36,27 @@ const Events = () => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [eventsRes, studentsRes] = await Promise.all([
-        eventsAPI.getAll(),
-        studentsAPI.getAll(),
-      ]);
-      setEvents(eventsRes.data);
-      setStudents(studentsRes.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+   const fetchData = async () => {
+     try {
+       const [eventsRes, studentsRes] = await Promise.all([
+         eventsAPI.getAll(),
+         studentsAPI.getAll(),
+       ]);
+       setEvents(eventsRes.data);
+       setStudents(studentsRes.data);
+     } catch (error) {
+       // Handle session expired error
+       if (error.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         console.error('Error fetching data:', error);
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
   const handleLogout = () => {
     removeToken();
@@ -65,34 +72,41 @@ const Events = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+   const handleSubmit = async (e) => {
+     e.preventDefault();
+     setError('');
 
-    try {
-      if (editingEvent) {
-        await eventsAPI.update(editingEvent._id, formData);
-      } else {
-        await eventsAPI.create(formData);
-      }
-      setShowModal(false);
-      setEditingEvent(null);
-      setFormData({
-        title: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        time: '',
-        location: '',
-        requiresPayment: false,
-        paymentAmount: '',
-        department: 'Business Department',
-      });
-      fetchData();
-    } catch (err) {
-      setError(err.message || 'Operation failed');
-    }
-  };
+     try {
+       if (editingEvent) {
+         await eventsAPI.update(editingEvent._id, formData);
+       } else {
+         await eventsAPI.create(formData);
+       }
+       setShowModal(false);
+       setEditingEvent(null);
+       setFormData({
+         title: '',
+         description: '',
+         startDate: '',
+         endDate: '',
+         time: '',
+         location: '',
+         requiresPayment: false,
+         paymentAmount: '',
+         department: 'Business Department',
+       });
+       fetchData();
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         setError(err.message || 'Operation failed');
+       }
+     }
+   };
 
   const handleEdit = (event) => {
     setEditingEvent(event);
@@ -110,29 +124,43 @@ const Events = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
-      try {
-        await eventsAPI.delete(id);
-        // Update state directly by removing the deleted event
-        setEvents(events.filter(event => event._id !== id));
-      } catch (error) {
-        alert('Error deleting event: ' + error.message);
-      }
-    }
-  };
+   const handleDelete = async (id) => {
+     if (window.confirm('Are you sure you want to delete this event?')) {
+       try {
+         await eventsAPI.delete(id);
+         // Update state directly by removing the deleted event
+         setEvents(events.filter(event => event._id !== id));
+       } catch (error) {
+         // Handle session expired error
+         if (error.message === 'Session expired. Please log in again.') {
+           // The auth data has been cleared by apiRequest, 
+           // ProtectedRoute will redirect to login on next render
+           console.warn('Session expired, redirecting to login');
+         } else {
+           alert('Error deleting event: ' + error.message);
+         }
+       }
+     }
+   };
 
-  const handleRegisterStudent = async () => {
-    try {
-      await studentsAPI.registerForEvent(selectedStudent, selectedEvent._id);
-      setShowRegisterModal(false);
-      setSelectedStudent('');
-      setSelectedEvent(null);
-      fetchData();
-    } catch (err) {
-      setError(err.message || 'Registration failed');
-    }
-  };
+   const handleRegisterStudent = async () => {
+     try {
+       await studentsAPI.registerForEvent(selectedStudent, selectedEvent._id);
+       setShowRegisterModal(false);
+       setSelectedStudent('');
+       setSelectedEvent(null);
+       fetchData();
+     } catch (err) {
+       // Handle session expired error
+       if (err.message === 'Session expired. Please log in again.') {
+         // The auth data has been cleared by apiRequest, 
+         // ProtectedRoute will redirect to login on next render
+         console.warn('Session expired, redirecting to login');
+       } else {
+         setError(err.message || 'Registration failed');
+       }
+     }
+   };
 
   const openAddModal = () => {
     setEditingEvent(null);
@@ -408,7 +436,7 @@ const Events = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <input
+                {/* <input
                   type="checkbox"
                   id="requiresPayment"
                   name="requiresPayment"
@@ -418,7 +446,7 @@ const Events = () => {
                 />
                 <label htmlFor="requiresPayment" className="text-sm font-medium text-gray-700">
                   Requires Payment
-                </label>
+                </label> */}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
