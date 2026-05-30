@@ -9,8 +9,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const userData = getUserData();
+const [selectedEvent, setSelectedEvent] = useState(null);
+   const [showEventModal, setShowEventModal] = useState(false);
+   const [modalEvent, setModalEvent] = useState(null);
+   const userData = getUserData();
 
   useEffect(() => {
     if (!userData) {
@@ -84,9 +86,10 @@ const Dashboard = () => {
     setSelectedEvent(null);
   };
 
-  const handleEventClick = (event) => {
-    setSelectedEvent(event);
-  };
+const handleEventClick = (event) => {
+     setModalEvent(event);
+     setShowEventModal(true);
+   };
 
   const nextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
@@ -272,9 +275,36 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          </div>
+         </div>
+       </div>
+       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowEventModal(false)}>
+         {showEventModal && (
+           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8" onClick={(e) => e.stopPropagation()}>
+             <h3 className="text-xl font-bold text-gray-900 mb-4">Event Details</h3>
+             <div className="space-y-2 text-sm">
+               <p><strong>Title:</strong> {modalEvent?.title}</p>
+               <p><strong>Description:</strong> {modalEvent?.description}</p>
+               <p><strong>Time:</strong> {modalEvent?.time}</p>
+               <p><strong>Location:</strong> {modalEvent?.location}</p>
+               <p><strong>Department:</strong> {modalEvent?.department === 'all' ? 'All Departments' : modalEvent?.department}</p>
+               <p><strong>Registered:</strong> {modalEvent?.registeredStudents?.length || 0}</p>
+               <p><strong>Status:</strong> {modalEvent?.status}</p>
+             </div>
+             <div className="mt-6 flex justify-end">
+               <button
+                 onClick={() => {
+                   setShowEventModal(false);
+                   setModalEvent(null);
+                 }}
+                 className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+               >
+                 Close
+               </button>
+             </div>
+           </div>
+         )}
+       </div>
+     </div>
 
           {/* Events Sidebar */}
           <div className="lg:col-span-1">
