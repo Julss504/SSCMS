@@ -1,18 +1,38 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import StudentRegister from './pages/StudentRegister';
 import Dashboard from './pages/Dashboard';
+import StudentDashboard from './pages/StudentDashboard';
 import Students from './pages/Students';
 import Events from './pages/Events';
+import Admin from './pages/Admin';
 import Attendance from './pages/Attendance';
-import Users from './pages/Users';
-import Profile from './pages/Profile';
-import { getToken } from './services/api';
+import Archive from './pages/Archive';
+import { getToken, getUserData } from './services/api';
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const token = getToken();
   return token ? children : <Navigate to="/login" />;
+};
+
+const AdminRoute = ({ children }) => {
+  const token = getToken();
+  const userData = getUserData();
+  return token && userData?.role === 'admin' ? children : <Navigate to="/dashboard" />;
+};
+
+const AdminOrOfficerRoute = ({ children }) => {
+  const token = getToken();
+  const userData = getUserData();
+  return token && (userData?.role === 'admin' || userData?.role === 'officer') ? children : <Navigate to="/dashboard" />;
+};
+
+const StudentRoute = ({ children }) => {
+  const token = getToken();
+  const userData = getUserData();
+  return token && userData?.role === 'student' ? children : <Navigate to="/dashboard" />;
 };
 
 function App() {
@@ -26,52 +46,61 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/student-register" element={<StudentRegister />} />
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Layout><Dashboard /></Layout>
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student-dashboard"
+          element={
+            <StudentRoute>
+              <Layout><StudentDashboard /></Layout>
+            </StudentRoute>
           }
         />
         <Route
           path="/students"
           element={
-            <ProtectedRoute>
-              <Students />
-            </ProtectedRoute>
+            <AdminRoute>
+              <Layout><Students /></Layout>
+            </AdminRoute>
           }
         />
         <Route
           path="/events"
           element={
             <ProtectedRoute>
-              <Events />
+              <Layout><Events /></Layout>
             </ProtectedRoute>
           }
         />
         <Route
           path="/attendance"
           element={
-            <ProtectedRoute>
-              <Attendance />
-            </ProtectedRoute>
+            <AdminOrOfficerRoute>
+              <Layout><Attendance /></Layout>
+            </AdminOrOfficerRoute>
+          }
+        />
+        <Route
+          path="/archive"
+          element={
+            <AdminRoute>
+              <Layout><Archive /></Layout>
+            </AdminRoute>
           }
         />
         <Route
           path="/users"
           element={
-            <ProtectedRoute>
-              <Users />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
+            <AdminRoute>
+              <Layout><Admin /></Layout>
+            </AdminRoute>
           }
         />
         <Route path="/" element={<Navigate to="/login" />} />

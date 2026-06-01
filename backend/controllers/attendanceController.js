@@ -5,11 +5,21 @@ const Student = require('../models/Student');
 // @desc    Get all attendance records
 // @route   GET /api/attendance
 // @access  Private
+// @query   archived - Set to 'true' to include archived records, 'false' for active only (default)
 const getAttendanceRecords = async (req, res) => {
   try {
-    const attendance = await Attendance.find()
+    const archivedFilter = req.query.archived;
+    let query = {};
+
+    if (archivedFilter === 'true') {
+      query = {};
+    } else if (archivedFilter === 'false' || archivedFilter === undefined) {
+      query = { isArchived: { $ne: true } };
+    }
+
+    const attendance = await Attendance.find(query)
       .populate('event', 'title date location')
-      .populate('student', 'name studentId email department year section');
+      .populate('student', 'name USN email department year section');
 
     res.status(200).json({
       success: true,
@@ -29,8 +39,15 @@ const getAttendanceRecords = async (req, res) => {
 // @access  Private
 const getAttendanceByEvent = async (req, res) => {
   try {
-    const attendance = await Attendance.find({ event: req.params.eventId })
-      .populate('student', 'name studentId email department year section');
+    const archivedFilter = req.query.archived;
+    let query = { event: req.params.eventId };
+
+    if (archivedFilter !== 'true') {
+      query.isArchived = { $ne: true };
+    }
+
+    const attendance = await Attendance.find(query)
+      .populate('student', 'name USN email department year section');
 
     res.status(200).json({
       success: true,
@@ -50,7 +67,14 @@ const getAttendanceByEvent = async (req, res) => {
 // @access  Private
 const getAttendanceByStudent = async (req, res) => {
   try {
-    const attendance = await Attendance.find({ student: req.params.studentId })
+    const archivedFilter = req.query.archived;
+    let query = { student: req.params.studentId };
+
+    if (archivedFilter !== 'true') {
+      query.isArchived = { $ne: true };
+    }
+
+    const attendance = await Attendance.find(query)
       .populate('event', 'title date location');
 
     res.status(200).json({
@@ -121,7 +145,7 @@ const markAttendance = async (req, res) => {
 
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('event', 'title date location')
-      .populate('student', 'name studentId email department year section');
+      .populate('student', 'name USN email department year section');
 
     res.status(201).json({
       success: true,
@@ -160,7 +184,7 @@ const updateAttendanceByEventAndStudent = async (req, res) => {
       { new: true, runValidators: true }
     )
       .populate('event', 'title date location')
-      .populate('student', 'name studentId email department year section');
+      .populate('student', 'name USN email department year section');
 
     res.status(200).json({
       success: true,
@@ -193,7 +217,7 @@ const updateAttendance = async (req, res) => {
       runValidators: true,
     })
       .populate('event', 'title date location')
-      .populate('student', 'name studentId email department year section');
+      .populate('student', 'name USN email department year section');
 
     res.status(200).json({
       success: true,
@@ -235,6 +259,78 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
+// @desc    Archive attendance record
+// @route   PATCH /api/attendance/:id/archive
+// @access  Private
+const archiveAttendance = async (req, res) => {
+  try {
+    const attendance = await Attendance.findById(req.params.id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found',
+      });
+    }
+
+    if (attendance.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance record is already archived',
+      });
+    }
+
+    await attendance.archive();
+
+    res.status(200).json({
+      success: true,
+      message: 'Attendance record archived successfully',
+      data: attendance,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Restore archived attendance record
+// @route   PATCH /api/attendance/:id/restore
+// @access  Private
+const restoreAttendance = async (req, res) => {
+  try {
+    const attendance = await Attendance.findById(req.params.id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found',
+      });
+    }
+
+    if (!attendance.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance record is not archived',
+      });
+    }
+
+    await attendance.restore();
+
+    res.status(200).json({
+      success: true,
+      message: 'Attendance record restored successfully',
+      data: attendance,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAttendanceRecords,
   getAttendanceByEvent,
@@ -242,6 +338,8 @@ module.exports = {
   markAttendance,
   updateAttendance,
   updateAttendanceByEventAndStudent,
-  deleteAttendance
+  deleteAttendance,
+  archiveAttendance,
+  restoreAttendance,
 };
 

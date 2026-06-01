@@ -7,9 +7,19 @@ const path = require('path');
 // @desc    Get all students
 // @route   GET /api/students
 // @access  Private
+// @query   archived - Set to 'true' to include archived students, 'false' for active only (default)
 const getStudents = async (req, res) => {
   try {
-    const students = await Student.find().populate('registeredEvents', 'title date');
+    const archivedFilter = req.query.archived;
+    let query = {};
+
+    if (archivedFilter === 'true') {
+      query = {};
+    } else if (archivedFilter === 'false' || archivedFilter === undefined) {
+      query = { isArchived: { $ne: true } };
+    }
+
+    const students = await Student.find(query).populate('registeredEvents', 'title date');
 
     res.status(200).json({
       success: true,
@@ -55,20 +65,20 @@ const getStudent = async (req, res) => {
 // @access  Private
 const createStudent = async (req, res) => {
   try {
-    const { studentId, name, email, phone, department, year, section } = req.body;
+const { USN, name, email, phone, department, year, section } = req.body;
 
     // Check if student exists
-    const studentExists = await Student.findOne({ $or: [{ studentId }, { email }] });
+    const studentExists = await Student.findOne({ $or: [{ USN }, { email }] });
 
     if (studentExists) {
       return res.status(400).json({
         success: false,
-        message: 'Student with this ID or email already exists',
+        message: 'Student with this USN or email already exists',
       });
     }
 
     const student = await Student.create({
-      studentId,
+      USN,
       name,
       email,
       phone,
@@ -148,6 +158,78 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+// @desc    Archive student
+// @route   PATCH /api/students/:id/archive
+// @access  Private
+const archiveStudent = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found',
+      });
+    }
+
+    if (student.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student is already archived',
+      });
+    }
+
+    await student.archive();
+
+    res.status(200).json({
+      success: true,
+      message: 'Student archived successfully',
+      data: student,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Restore archived student
+// @route   PATCH /api/students/:id/restore
+// @access  Private
+const restoreStudent = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found',
+      });
+    }
+
+    if (!student.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student is not archived',
+      });
+    }
+
+    await student.restore();
+
+    res.status(200).json({
+      success: true,
+      message: 'Student restored successfully',
+      data: student,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // @desc    Register student for event
 // @route   POST /api/students/:id/register/:eventId
 // @access  Private
@@ -170,7 +252,6 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // Check if already registered
     const alreadyRegistered = event.registeredStudents.some(
       (reg) => reg.student.toString() === student._id.toString()
     );
@@ -182,23 +263,78 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-
-
-    // Add student to event
     event.registeredStudents.push({
       student: student._id,
       paymentStatus: event.requiresPayment ? 'pending' : 'not_required',
+      approvalStatus: 'pending',
     });
 
     await event.save();
 
-    // Add event to student
     student.registeredEvents.push(event._id);
     await student.save();
 
     res.status(200).json({
       success: true,
       data: { student, event },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const registerSelfForEvent = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const studentId = req.user.studentRef;
+
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student profile not linked to this account',
+      });
+    }
+
+    const event = await Event.findById(req.params.eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    const alreadyRegistered = event.registeredStudents.some(
+      (reg) => reg.student.toString() === studentId.toString()
+    );
+
+    if (alreadyRegistered) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already registered for this event',
+      });
+    }
+
+    event.registeredStudents.push({
+      student: studentId,
+      paymentStatus: event.requiresPayment ? 'pending' : 'not_required',
+      approvalStatus: 'pending',
+    });
+
+    await event.save();
+
+    const student = await Student.findById(studentId);
+    if (student && !student.registeredEvents.includes(event._id)) {
+      student.registeredEvents.push(event._id);
+      await student.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { event },
     });
   } catch (error) {
     res.status(500).json({
@@ -232,32 +368,32 @@ const importStudents = async (req, res) => {
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const studentData = {
-        studentId: row['Student ID'] || row['studentId'] || row['id'],
-        name: row['Name'] || row['name'],
-        email: row['Email'] || row['email'],
-        phone: row['Phone'] || row['phone'] || '',
-        department: row['Department'] || row['department'] || '',
-        year: row['Year'] || row['year'] || '',
-        section: row['Section'] || row['section'] || ''
-      };
+       const studentData = {
+         USN: row['Student ID'] || row['studentId'] || row['id'] || row['USN'],
+         name: row['Name'] || row['name'],
+         email: row['Email'] || row['email'],
+         phone: row['Phone'] || row['phone'] || '',
+         department: row['Department'] || row['department'] || '',
+         year: row['Year'] || row['year'] || '',
+         section: row['Section'] || row['section'] || ''
+       };
 
-      // Basic validation
-      if (!studentData.studentId || !studentData.name || !studentData.email) {
-        errors.push(`Row ${i + 2}: Missing required fields (Student ID, Name, or Email)`);
-        continue;
-      }
+       // Basic validation
+       if (!studentData.USN || !studentData.name || !studentData.email) {
+         errors.push(`Row ${i + 2}: Missing required fields (USN, Name, or Email)`);
+         continue;
+       }
 
-      // Check if student exists
-      const existingStudent = await Student.findOne({ 
-        $or: [
-          { studentId: studentData.studentId }, 
-          { email: studentData.email }
-        ]
-      });
+       // Check if student exists
+       const existingStudent = await Student.findOne({ 
+         $or: [
+           { USN: studentData.USN }, 
+           { email: studentData.email }
+         ]
+       });
 
       if (existingStudent) {
-        errors.push(`Row ${i + 2}: Student with ID ${studentData.studentId} or email ${studentData.email} already exists`);
+         errors.push(`Row ${i + 2}: Student with USN ${studentData.USN} or email ${studentData.email} already exists`);
         continue;
       }
 
@@ -293,5 +429,8 @@ module.exports = {
   updateStudent,
   deleteStudent,
   registerForEvent,
-  importStudents
+  registerSelfForEvent,
+  importStudents,
+  archiveStudent,
+  restoreStudent,
 };

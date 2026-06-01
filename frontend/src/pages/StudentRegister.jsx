@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 
-const Register = () => {
+const StudentRegister = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    studentId: '',
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    phone: '',
+    department: '',
+    year: '',
+    section: '',
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,8 +21,15 @@ const Register = () => {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [countdown, setCountdown] = useState(3);
 
+  const departments = ['Business Department', 'Information Technology Dept.', 'Hospitality Management Dept.', 'Education Dept.'];
+  const years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+  const sections = ['A', 'B', 'C', 'D', 'E'];
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   useEffect(() => {
@@ -45,12 +57,18 @@ const Register = () => {
       return;
     }
 
+    if (!formData.studentId || !formData.name || !formData.email) {
+      setError('Student ID, Name, and Email are required');
+      return;
+    }
+
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await authAPI.register({
-        ...registerData,
-        role: 'worker'
-      });
+      const { confirmPassword, studentId, ...rest } = formData;
+      const registerData = {
+        USN: studentId,
+        ...rest,
+      };
+      await authAPI.registerStudent(registerData);
       setRegistrationComplete(true);
       setCountdown(3);
     } catch (err) {
@@ -70,14 +88,14 @@ const Register = () => {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 mb-5 shadow-2xl">
               <img src="src/assets/logo2.png" alt="SSC" className="h-16 w-16 object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">SSC Portal</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">SSC</h1>
             <p className="text-brand-300 text-sm mt-2 font-medium">Registration Complete!</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-brand-100 text-center">
             <div className="text-4xl mb-4">✅</div>
             <h2 className="text-2xl font-bold text-brand-900 mb-4">Registration Complete!</h2>
-            <p className="text-sm text-brand-500 mb-2">Your account has been successfully created.</p>
+            <p className="text-sm text-brand-500 mb-2">Your student account has been successfully created.</p>
             <p className="text-sm text-brand-500 mb-4">Redirecting to login in {countdown} seconds...</p>
             <button
               onClick={() => navigate('/login')}
@@ -106,8 +124,8 @@ const Register = () => {
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 mb-5 shadow-2xl">
             <img src="src/assets/logo2.png" alt="SSC" className="h-16 w-16 object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">SSC Portal</h1>
-          <p className="text-brand-300 text-sm mt-2 font-medium">Create your account</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">SSC</h1>
+          <p className="text-brand-300 text-sm mt-2 font-medium">Create your student account</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 border border-brand-100">
@@ -118,6 +136,24 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="studentId" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Student ID
+              </label>
+              <input
+                minLength={11}
+                maxLength={11}
+                type="text"
+                id="studentId"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleChange}
+                required
+                placeholder="Enter your student ID"
+                className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
+            </div>
+
             <div>
               <label htmlFor="name" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
                 Full Name
@@ -148,6 +184,79 @@ const Register = () => {
                 placeholder="you@email.com"
                 className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
               />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Phone
+              </label>
+              <input
+                maxLength={11}
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Enter your phone number"
+                className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="department" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Department
+              </label>
+              <select
+                id="department"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              >
+                <option value="">Select Department</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="year" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Year
+              </label>
+              <select
+                id="year"
+                name="year"
+                value={formData.year}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              >
+                <option value="">Select Year</option>
+                {years.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="section" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Section
+              </label>
+              <select
+                id="section"
+                name="section"
+                value={formData.section}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              >
+                <option value="">Select Section</option>
+                {sections.map(sec => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -204,17 +313,18 @@ const Register = () => {
 
             <button
               type="submit"
+              disabled={false} // We don't have a loading state for registration, but we can add if needed
               className="w-full bg-ssc-red-600 hover:bg-ssc-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-ssc-red-600/15 mt-2"
             >
-              Create Account
+              Register
             </button>
           </form>
 
           <div className="text-center mt-6">
             <p className="text-sm text-brand-500">
-              Already a member?{' '}
+              Already have an account?{' '}
               <Link to="/login" className="text-ssc-red-600 hover:text-ssc-red-700 font-semibold transition-colors">
-                Sign in here
+                Login here
               </Link>
             </p>
           </div>
@@ -228,4 +338,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default StudentRegister;

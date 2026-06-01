@@ -61,17 +61,58 @@ const eventSchema = new mongoose.Schema({
       enum: ['pending', 'paid', 'not_required'],
       default: 'not_required',
     },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'disapproved'],
+      default: 'pending',
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
   }],
   status: {
     type: String,
     enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
     default: 'upcoming',
   },
+  isArchived: {
+    type: Boolean,
+    default: false,
+  },
+  archivedAt: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
+
+// Static method to find only active (non-archived) events
+eventSchema.statics.findActive = function () {
+  return this.find({ isArchived: { $ne: true } });
+};
+
+// Instance method to archive an event
+eventSchema.methods.archive = async function () {
+  this.isArchived = true;
+  this.archivedAt = new Date();
+  return await this.save();
+};
+
+// Instance method to restore an event from archive
+eventSchema.methods.restore = async function () {
+  this.isArchived = false;
+  this.archivedAt = null;
+  return await this.save();
+};
 
 const Event = mongoose.model('Event', eventSchema);
 

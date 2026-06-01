@@ -8,7 +8,10 @@ const {
   updateStudent,
   deleteStudent,
   registerForEvent,
+  registerSelfForEvent,
   importStudents,
+  archiveStudent,
+  restoreStudent,
 } = require('../controllers/studentController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -53,8 +56,13 @@ router
   .delete(protect, authorize(['admin']), deleteStudent);
 
 router.post('/:id/register/:eventId', protect, authorize(['admin']), registerForEvent);
+router.post('/register-self/:eventId', protect, registerSelfForEvent);
 
 // Import students route
 router.post('/import', protect, authorize(['admin']), upload.single('file'), importStudents);
+
+// Archive/restore routes
+router.patch('/:id/archive', protect, authorize(['admin']), archiveStudent);
+router.patch('/:id/restore', protect, authorize(['admin']), restoreStudent);
 
 module.exports = router;

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUserData, removeToken, removeUserData, isAdmin, setUserData } from '../services/api';
+import { getUserData, setUserData } from '../services/api';
 import { authAPI } from '../services/api';
-import Logo from '../components/Logo';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const userData = getUserData();
-  const [loading, setLoading] = useState(true);
+  const storedUserData = getUserData();
+
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -19,23 +18,49 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (!userData) {
+    if (!storedUserData) {
       navigate('/login');
       return;
     }
     setFormData({
-      name: userData.name,
-      email: userData.email,
+      name: storedUserData.name,
+      email: storedUserData.email,
       password: '',
       confirmPassword: '',
     });
-    setLoading(false);
-  }, [userData, navigate]);
+  }, [storedUserData, navigate]);
 
-  const handleLogout = () => {
-    removeToken();
-    removeUserData();
-    navigate('/login');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      const updateData = {
+        name: formData.name,
+        email: formData.email,
+      };
+      if (formData.password) {
+        updateData.password = formData.password;
+      }
+
+      const response = await authAPI.updateProfile(updateData);
+      setSuccess('Profile updated successfully');
+      setEditing(false);
+
+      setUserData(response.data);
+    } catch (err) {
+      if (err.message === 'Session expired. Please log in again.') {
+        console.warn('Session expired, redirecting to login');
+      } else {
+        setError(err.message || 'Failed to update profile');
+      }
+    }
   };
 
   const handleChange = (e) => {
@@ -45,260 +70,169 @@ const Profile = () => {
     });
   };
 
-   const handleSubmit = async (e) => {
-     e.preventDefault();
-     setError('');
-     setSuccess('');
-
-     if (formData.password && formData.password !== formData.confirmPassword) {
-       setError('Passwords do not match');
-       return;
-     }
-
-     try {
-       const updateData = {
-         name: formData.name,
-         email: formData.email,
-       };
-       if (formData.password) {
-         updateData.password = formData.password;
-       }
-
-       const response = await authAPI.updateProfile(updateData);
-       setSuccess('Profile updated successfully');
-       setEditing(false);
-       
-       // Update user data in localStorage
-       setUserData(response.data);
-     } catch (err) {
-       // Handle session expired error
-       if (err.message === 'Session expired. Please log in again.') {
-         // The auth data has been cleared by apiRequest, 
-         // ProtectedRoute will redirect to login on next render
-         console.warn('Session expired, redirecting to login');
-       } else {
-         setError(err.message || 'Failed to update profile');
-       }
-     }
-   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-2xl font-bold text-ssc-red-600">Loading...</div>
-      </div>
-    );
+  if (!storedUserData) {
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Logo className="h-12 w-12" />
-            </div>
-            <div className="flex items-center gap-6">
-              <button 
-                onClick={() => navigate('/dashboard')} 
-                className="text-gray-600 hover:text-ssc-red-600 font-medium px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Dashboard
-              </button>
-              <button 
-                onClick={() => navigate('/events')} 
-                className="text-gray-600 hover:text-ssc-red-600 font-medium px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Events
-              </button>
-              {isAdmin() && (
-                <>
-                  <button 
-                    onClick={() => navigate('/students')} 
-                    className="text-gray-600 hover:text-ssc-red-600 font-medium px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    Students
-                  </button>
-                  <button 
-                    onClick={() => navigate('/users')} 
-                    className="text-gray-600 hover:text-ssc-red-600 font-medium px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    Users
-                  </button>
-                </>
-              )}
-              <button 
-                onClick={() => navigate('/attendance')} 
-                className="text-gray-600 hover:text-ssc-red-600 font-medium px-3 py-2 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Attendance
-              </button>
-              <button 
-                onClick={() => navigate('/profile')} 
-                className="text-ssc-red-600 font-semibold px-3 py-2 rounded-md bg-ssc-red-50"
-              >
-                Profile
-              </button>
-              <button 
-                onClick={handleLogout} 
-                className="bg-ssc-red-600 hover:bg-ssc-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-brand-900 tracking-tight">Profile</h2>
+        <p className="text-sm text-brand-500 mt-1 font-medium">Manage your personal information</p>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="page-header flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
-          {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="bg-ssc-red-600 hover:bg-ssc-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              Edit Profile
-            </button>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center gap-6 mb-8">
-            <div className="w-24 h-24 bg-ssc-red-100 rounded-full flex items-center justify-center">
-              <span className="text-ssc-red-600 text-3xl font-bold">
-                {userData.name.charAt(0)}
+      <div className="bg-white rounded-2xl shadow-card border border-brand-100 overflow-hidden">
+        <div className="p-6 border-b border-brand-100">
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-2xl bg-brand-100 flex items-center justify-center flex-shrink-0">
+              <span className="text-brand-700 text-3xl font-bold">
+                {storedUserData.name.charAt(0)}
               </span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-900">{userData.name}</h3>
-              <p className="text-gray-600">{userData.email}</p>
-              <p className="text-sm text-gray-500 mt-1">Role: {userData.role}</p>
+              <h3 className="text-xl font-bold text-brand-900">{storedUserData.name}</h3>
+              <p className="text-sm text-brand-500">{storedUserData.email}</p>
+              <span className={`inline-flex mt-2 text-xs font-semibold px-2.5 py-1 rounded-md ${
+                storedUserData.role === 'admin' ? 'bg-ssc-red-100 text-ssc-red-700' :
+                storedUserData.role === 'officer' ? 'bg-brand-200 text-brand-800' :
+                'bg-green-100 text-green-700'
+              }`}>
+                {storedUserData.role.charAt(0).toUpperCase() + storedUserData.role.slice(1)}
+              </span>
             </div>
           </div>
+        </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
+        {error && (
+          <div className="mx-6 bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl mb-4 text-sm font-medium">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mx-6 bg-green-50 border border-green-200 text-green-700 px-5 py-3 rounded-xl mb-4 text-sm font-medium">
+            {success}
+          </div>
+        )}
+
+        {editing ? (
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <div>
+              <label htmlFor="name" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
             </div>
-          )}
 
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-              {success}
+            <div>
+              <label htmlFor="email" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
             </div>
-          )}
 
-          {editing ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ssc-red-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label htmlFor="password" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                New Password (leave blank to keep current)
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
+            </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ssc-red-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-900 placeholder-brand-400 focus:ring-2 focus:ring-ssc-red-500/20 focus:border-ssc-red-500 outline-none transition-colors"
+              />
+            </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  New Password (leave blank to keep current)
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ssc-red-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ssc-red-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  className="bg-ssc-red-600 hover:bg-ssc-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing(false);
-                    setFormData({
-                      name: userData.name,
-                      email: userData.email,
-                      password: '',
-                      confirmPassword: '',
-                    });
-                    setError('');
-                    setSuccess('');
-                  }}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold px-6 py-2 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                className="bg-ssc-red-600 hover:bg-ssc-red-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-colors"
+              >
+                Save Changes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setFormData({
+                    name: storedUserData.name,
+                    email: storedUserData.email,
+                    password: '',
+                    confirmPassword: '',
+                  });
+                  setError('');
+                  setSuccess('');
+                }}
+                className="bg-brand-100 hover:bg-brand-200 text-brand-700 font-semibold py-2.5 px-6 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                <h4 className="text-xs font-bold text-brand-700 uppercase tracking-wider mb-4">Personal Information</h4>
                 <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="text-gray-900">{userData.name}</span>
+                  <div className="flex justify-between py-2 border-b border-brand-100">
+                    <span className="text-sm text-brand-500">Name</span>
+                    <span className="text-sm font-semibold text-brand-900">{storedUserData.name}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Email:</span>
-                    <span className="text-gray-900">{userData.email}</span>
+                  <div className="flex justify-between py-2 border-b border-brand-100">
+                    <span className="text-sm text-brand-500">Email</span>
+                    <span className="text-sm font-semibold text-brand-900">{storedUserData.email}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Role:</span>
-                    <span className="text-gray-900">{userData.role}</span>
+                  <div className="flex justify-between py-2">
+                    <span className="text-sm text-brand-500">Role</span>
+                    <span className="text-sm font-semibold text-brand-900">{storedUserData.role}</span>
                   </div>
                 </div>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-ssc-red-600 hover:bg-ssc-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  Edit Profile
+                </button>
               </div>
             </div>
-          )}
-
-
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

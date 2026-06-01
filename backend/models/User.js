@@ -23,9 +23,14 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'officer'],
-    default: 'officer',
+    enum: ['admin', 'officer', 'student'],
+    default: 'student',
     required: true,
+  },
+  studentRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student',
+    default: null,
   },
   loginAttempts: {
     type: Number,
@@ -34,6 +39,14 @@ const userSchema = new mongoose.Schema({
   },
   lockUntil: {
     type: Date,
+  },
+  isArchived: {
+    type: Boolean,
+    default: false,
+  },
+  archivedAt: {
+    type: Date,
+    default: null,
   },
 });
 
@@ -89,6 +102,20 @@ userSchema.methods.resetLoginAttempts = async function () {
     $set: { loginAttempts: 0 },
     $unset: { lockUntil: 1 },
   });
+};
+
+// Archive user
+userSchema.methods.archive = async function () {
+  this.isArchived = true;
+  this.archivedAt = new Date();
+  return await this.save();
+};
+
+// Restore user from archive
+userSchema.methods.restore = async function () {
+  this.isArchived = false;
+  this.archivedAt = null;
+  return await this.save();
 };
 
 const User = mongoose.model('User', userSchema);
